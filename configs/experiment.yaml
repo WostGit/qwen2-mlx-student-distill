@@ -1,0 +1,7 @@
+model_id: Qwen/Qwen2-0.5B-Instruct
+cache_dir: ~/.cache/huggingface
+train_prompt_cap: 12
+eval_prompt_cap: 12
+budgets: [64, 128, 256, 512]
+seeds: [0, 1, 2]
+topk_values: [2, 3, 5]

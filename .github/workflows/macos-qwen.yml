@@ -1,0 +1,52 @@
+name: macos-qwen-interface-leakage
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  run-experiments:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Cache HF downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: ${{ runner.os }}-hf-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-hf-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Startup + sanity check
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python src/experiments.py --sanity-check-llm
+
+      - name: Full experiments
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python src/experiments.py --debug-llm
+
+      - name: Upload artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qwen2-mlx-student-distill-results
+          path: |
+            results/**

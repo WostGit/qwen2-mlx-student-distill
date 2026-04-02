@@ -1,0 +1,52 @@
+name: macOS MLX Distill CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  run-experiments:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Cache HF models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: ${{ runner.os }}-hf-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Startup self-check
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python run_experiments.py --results-dir results
+
+      - name: Sanity check LLM pipeline
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python run_experiments.py --results-dir results --sanity-check-llm
+
+      - name: Full experiments with debug artifacts
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python run_experiments.py --results-dir results --debug-llm --qwen-eval-cap 10
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qwen2-mlx-student-distill-results
+          path: results/

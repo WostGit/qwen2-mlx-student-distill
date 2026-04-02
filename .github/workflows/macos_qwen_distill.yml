@@ -1,0 +1,55 @@
+name: macOS Qwen Distill
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  qwen-distill:
+    runs-on: macos-latest
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_HOME: ~/.cache/huggingface
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Cache Hugging Face model cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-${{ hashFiles('configs/experiment.yaml') }}
+          restore-keys: |
+            hf-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Startup self-check
+        run: |
+          python experiments/run_experiments.py --startup-selfcheck
+
+      - name: Required sanity check
+        run: |
+          python experiments/run_experiments.py --sanity-check-llm
+
+      - name: Run experiments
+        run: |
+          python experiments/run_experiments.py --run-all --debug-llm
+
+      - name: Upload artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qwen2-mlx-student-distill-results
+          path: |
+            results/**

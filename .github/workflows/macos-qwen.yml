@@ -1,0 +1,57 @@
+name: macos-qwen-interface-leakage
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  run-experiments:
+    runs-on: macos-latest
+    timeout-minutes: 180
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_HOME: ~/.cache/huggingface
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Cache Hugging Face
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: ${{ runner.os }}-hf-${{ hashFiles('requirements.txt', '.github/workflows/macos-qwen.yml') }}
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Startup self-check
+        run: python -m experiments.run_experiments --startup-selfcheck
+
+      - name: Sanity-check LLM
+        run: python -m experiments.run_experiments --sanity-check-llm
+
+      - name: Run full experiment suite
+        run: python -m experiments.run_experiments --run-all --debug-llm
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qwen2-mlx-student-distill-results
+          path: |
+            results/**

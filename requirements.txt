@@ -1,0 +1,7 @@
+numpy
+pandas
+matplotlib
+pyyaml
+mlx
+mlx-lm
+huggingface_hub
